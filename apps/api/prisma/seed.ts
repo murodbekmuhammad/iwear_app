@@ -9,7 +9,10 @@ async function main() {
   const name = process.env.ADMIN_NAME ?? 'Iwear Admin';
 
   if (!password) {
-    throw new Error('Set ADMIN_PASSWORD in .env before seeding.');
+    // Don't fail a deploy over this; the admin can be created on a later run.
+    console.warn('ADMIN_PASSWORD is not set, so no admin account was created.');
+    await prisma.$disconnect();
+    return;
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

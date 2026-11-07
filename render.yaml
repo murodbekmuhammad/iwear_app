@@ -1,0 +1,54 @@
+# Render Blueprint: deploys the Iwear API, website and database from the main branch.
+# See README "Deploy to Render" for the two values to fill in after the first deploy.
+databases:
+  - name: iwear-db
+    plan: free
+    region: frankfurt
+    databaseName: iwear
+    user: iwear
+
+services:
+  - type: web
+    name: iwear-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci && npm run build -w @iwear/api && npm run prisma:deploy -w @iwear/api && npm run prisma:seed -w @iwear/api
+    startCommand: npm run start -w @iwear/api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iwear-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Iwear Admin
+      # The website's address, e.g. https://iwear-web.onrender.com (set after the first deploy).
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: web
+    name: iwear-web
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci && npm run build -w @iwear/web
+    startCommand: node apps/web/.output/server/index.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # The API's address plus /api, e.g. https://iwear-api.onrender.com/api (set after the first deploy).
+      - key: NUXT_PUBLIC_API_BASE
+        sync: false

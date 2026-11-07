@@ -13,7 +13,7 @@ export function configureApp(app: NestExpressApplication) {
   const origins = config
     .get<string>('CORS_ORIGINS', 'http://localhost:3000')
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
     .filter(Boolean);
   app.enableCors({ origin: origins });
 

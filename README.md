@@ -66,6 +66,28 @@ npm run dev:web     # http://localhost:3000
 
 Log in at http://localhost:3000/login with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `apps/api/.env`.
 
+## Deploy to Render
+
+`render.yaml` sets up three things on [Render](https://render.com), all in Frankfurt: the PostgreSQL
+database (`iwear-db`), the API (`iwear-api`) and the website (`iwear-web`). Each merge to `main`
+redeploys both apps, runs database migrations and makes sure the admin account exists.
+
+1. On Render, choose **New → Blueprint**, connect this GitHub repo and pick `main`.
+2. Render asks for the values marked `sync: false`. For now, set `ADMIN_EMAIL` and `ADMIN_PASSWORD`
+   (your admin login) and leave the two URLs blank. Click **Apply**.
+3. When both services are up, copy their addresses from the dashboard and set:
+   - on **iwear-web**: `NUXT_PUBLIC_API_BASE` = `https://<iwear-api address>/api`
+   - on **iwear-api**: `CORS_ORIGINS` = `https://<iwear-web address>`
+
+   Save both. Render restarts them, and the site is live at the iwear-web address.
+
+Things to know about the free plan:
+- Services sleep after 15 minutes without visitors, so the first page after a pause takes about a minute.
+- The free database expires after 30 days. Upgrade it before then to keep the data.
+- Uploaded photos are saved on the server's disk, which is wiped on every deploy. Before real stores
+  upload photos, add a Render disk mounted at `apps/api/uploads` (paid) or switch `UploadsService` to
+  S3-style storage.
+
 ## Tests
 
 ```bash

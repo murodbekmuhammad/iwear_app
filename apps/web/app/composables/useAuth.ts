@@ -3,8 +3,8 @@ import type { AuthResponse, Role, User } from '~/types';
 /** Where each role lands after signing in. */
 export const homeForRole: Record<Role, string> = {
   ADMIN: '/admin',
-  COMPANY: '/company',
-  CUSTOMER: '/account',
+  COMPANY: '/company/products',
+  CUSTOMER: '/',
   COURIER: '/courier',
 };
 

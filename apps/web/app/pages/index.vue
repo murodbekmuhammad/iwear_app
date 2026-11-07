@@ -1,28 +1,33 @@
+<script setup lang="ts">
+import type { StoreSummary } from '~/types';
+
+const api = useApi();
+const search = ref('');
+const query = ref('');
+let timer: ReturnType<typeof setTimeout> | undefined;
+watch(search, (value) => {
+  clearTimeout(timer);
+  timer = setTimeout(() => (query.value = value.trim()), 300);
+});
+
+const { data: stores, pending } = await useAsyncData(
+  'stores',
+  () => api<StoreSummary[]>('/stores', { query: query.value ? { search: query.value } : {} }),
+  { watch: [query] },
+);
+</script>
+
 <template>
-  <section class="hero">
-    <h1>Try it on before you buy it.</h1>
-    <p class="lead">
-      Iwear lets you see clothes on yourself with your camera, tells you your size, and delivers your
-      order to your door.
-    </p>
-    <div class="actions">
-      <NuxtLink to="/register" class="btn">Start shopping</NuxtLink>
-      <NuxtLink to="/register-company" class="btn btn-ghost">Sell on Iwear</NuxtLink>
-    </div>
+  <section class="intro">
+    <h1>Find clothes you love, try them on, get them delivered.</h1>
+    <input v-model="search" type="search" class="search" placeholder="Search stores" aria-label="Search stores" />
   </section>
 
-  <section class="grid three">
-    <div class="card">
-      <h3>Virtual try-on</h3>
-      <p>Use your camera to see how a dress looks on you. Coming in a later release.</p>
-    </div>
-    <div class="card">
-      <h3>Your size, measured</h3>
-      <p>AI estimates your measurements and picks the right size for each brand.</p>
-    </div>
-    <div class="card">
-      <h3>Delivered to you</h3>
-      <p>Pick your spot on the map and a courier brings your order.</p>
-    </div>
-  </section>
+  <p v-if="pending && !stores" class="muted">Loading stores…</p>
+  <p v-else-if="!stores?.length" class="muted">
+    {{ query ? `No stores match "${query}".` : 'No stores yet. Check back soon.' }}
+  </p>
+  <div v-else class="grid stores">
+    <StoreCard v-for="store in stores" :key="store.id" :store="store" />
+  </div>
 </template>

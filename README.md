@@ -22,10 +22,19 @@ and couriers deliver orders to the spot the customer picks on a map.
 ## Roadmap
 
 1. **Foundation** (done): accounts, the four roles, login with JWT, company sign-up and admin approval, courier accounts
-2. **Catalog:** companies manage products, sizes, colours, photos and size charts; customers browse and search
+2. **Stores and clothes** (done): visitors browse stores and clothes without logging in; companies manage their clothes with photos, sizes, stock and an optional size chart
 3. **Orders:** cart, checkout, payments, order statuses
 4. **Delivery:** address picker on a map, courier assignment, delivery tracking
 5. **AI:** camera try-on, size estimation, recommendations
+
+## How it works
+
+1. A visitor opens the site and sees the list of stores. No login needed.
+2. They open a store, filter by type (dresses, tops…) and open an item.
+3. On the item page they see photos, price, colours, sizes in stock and the size chart.
+   "Try it on" (camera try-on) and ordering arrive in the next phases; ordering asks the visitor to log in.
+4. Companies log in and manage their clothes under **My clothes**. Their store appears to shoppers
+   once an admin approves it.
 
 ## Getting started
 
@@ -81,7 +90,19 @@ Full, interactive docs are at `/api/docs`.
 | GET | `/admin/users?role=COURIER` | Admin |
 | PATCH | `/admin/users/:id/active` | Admin: activate or deactivate an account |
 | POST | `/admin/couriers` | Admin: create a courier account |
+| GET | `/stores?search=` | Public: approved stores |
+| GET | `/stores/:slug?category=DRESS` | Public: a store and its visible clothes |
+| GET | `/products/:id` | Public: one item with photos, sizes and size chart |
+| GET, POST | `/company/products` | Company: list or add clothes |
+| GET, PATCH, DELETE | `/company/products/:id` | Company: view, edit or delete an item |
+| POST | `/company/products/:id/images` | Company: upload photos (multipart field `images`) |
+| DELETE | `/company/products/:id/images/:imageId` | Company: remove a photo |
+| POST | `/company/logo` | Company: upload the store logo (multipart field `logo`) |
 | GET | `/health` | Public |
+
+Uploaded photos are saved in `apps/api/uploads` (set `UPLOAD_DIR` to change it) and served at
+`/uploads/<file>`. Only real JPG, PNG and WebP files up to 5 MB are accepted. For production, swap
+`UploadsService` for cloud storage such as S3.
 
 ### Company status
 

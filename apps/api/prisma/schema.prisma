@@ -50,6 +50,7 @@ model Company {
   phone           String?
   website         String?
   address         String?
+  logoUrl         String?
   status          CompanyStatus @default(PENDING)
   rejectionReason String?
   createdAt       DateTime      @default(now())
@@ -62,5 +63,67 @@ model Company {
   reviewedById String?
   reviewedBy   User?     @relation("CompanyReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
+  products Product[]
+
   @@index([status])
+}
+
+enum Category {
+  DRESS
+  TOP
+  BOTTOM
+  OUTERWEAR
+  SUIT
+  ACCESSORY
+}
+
+/// A piece of clothing a company sells. Only published products of approved companies are public.
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    Category
+  /// Price in Uzbek so'm (whole numbers).
+  price       Int
+  colors      String[]
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  sizes  ProductSize[]
+  images ProductImage[]
+
+  @@index([companyId, isPublished])
+  @@index([category])
+}
+
+/// One size of a product with its stock and, optionally, body measurements it fits.
+/// The measurements feed the AI size suggestion later.
+model ProductSize {
+  id        String @id @default(uuid())
+  label     String
+  stock     Int    @default(0)
+  chestCm   Int?
+  waistCm   Int?
+  hipsCm    Int?
+  sortOrder Int    @default(0)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, label])
+}
+
+model ProductImage {
+  id        String @id @default(uuid())
+  url       String
+  sortOrder Int    @default(0)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }

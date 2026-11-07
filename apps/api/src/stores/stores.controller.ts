@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
-import { ListStoresQuery, StoreProductsQuery } from '../products/dto/product.dto';
+import { ListProductsQuery, ListStoresQuery, StoreProductsQuery } from '../products/dto/product.dto';
 import { StoresService } from './stores.service';
 
 @ApiTags('stores (public)')
@@ -18,6 +18,11 @@ export class StoresController {
   @Get('stores/:slug')
   get(@Param('slug') slug: string, @Query() query: StoreProductsQuery) {
     return this.stores.getStore(slug, query.category);
+  }
+
+  @Get('products')
+  products(@Query() query: ListProductsQuery) {
+    return this.stores.listProducts(query);
   }
 
   @Get('products/:id')

@@ -81,6 +81,24 @@ export class StoresService {
     return { ...store, categories: categories.map((row) => row.category), products };
   }
 
+  /** Newest visible items across all approved stores, for the home page and search. */
+  listProducts(params: { search?: string; category?: Category; limit: number }) {
+    const search = params.search
+      ? {
+          OR: [
+            { name: { contains: params.search, mode: 'insensitive' as const } },
+            { company: { name: { contains: params.search, mode: 'insensitive' as const } } },
+          ],
+        }
+      : {};
+    return this.prisma.product.findMany({
+      where: { ...visibleProduct, category: params.category, ...search },
+      select: { ...productCardSelect, company: { select: { name: true, slug: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: params.limit,
+    });
+  }
+
   async getProduct(id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, ...visibleProduct },

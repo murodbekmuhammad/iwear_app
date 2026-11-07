@@ -95,6 +95,8 @@ export interface ProductCard {
   colors: string[];
   images: { url: string }[];
   sizes: { label: string; stock: number }[];
+  /** Present on cross-store listings (home, search). */
+  company?: { name: string; slug: string };
 }
 
 export interface Store extends Omit<StoreSummary, 'productCount' | 'previewImages'> {

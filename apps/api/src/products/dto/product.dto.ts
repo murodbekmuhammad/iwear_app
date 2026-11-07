@@ -170,3 +170,25 @@ export class ListStoresQuery {
   @MaxLength(100)
   search?: string;
 }
+
+export class ListProductsQuery {
+  @ApiPropertyOptional({ description: 'Matches the item name or its store name' })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  @ApiPropertyOptional({ enum: Category })
+  @IsOptional()
+  @IsEnum(Category)
+  category?: Category;
+
+  @ApiPropertyOptional({ default: 24 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(60)
+  limit: number = 24;
+}

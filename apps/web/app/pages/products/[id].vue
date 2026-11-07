@@ -4,50 +4,60 @@ import type { PublicProduct } from '~/types';
 const route = useRoute();
 const api = useApi();
 const media = useMediaUrl();
-const { user } = useAuth();
+const bag = useBag();
 
-const { data: product, error } = await useAsyncData(
-  () => `product-${route.params.id}`,
-  () => api<PublicProduct>(`/products/${route.params.id}`),
+const { data: product, error } = await useAsyncData(`product-${route.params.id}`, () =>
+  api<PublicProduct>(`/products/${route.params.id}`),
 );
-
 useHead(() => ({ title: product.value ? `${product.value.name} · Iwear` : 'Iwear' }));
 
 const photo = ref(0);
+const color = ref<string | null>(product.value?.colors[0] ?? null);
 const size = ref<string | null>(null);
-const color = ref<string | null>(null);
-const notice = ref<string | null>(null);
+const showChart = ref(false);
+const notice = ref<{ text: string; ok?: boolean } | null>(null);
 
 const hasSizeChart = computed(() => product.value?.sizes.some((s) => s.chestCm || s.waistCm || s.hipsCm));
 
 function tryOn() {
-  notice.value = 'Virtual try-on with your camera is coming soon.';
+  notice.value = { text: 'Camera try-on is coming soon. You can already add this item to your bag.' };
 }
 
-function order() {
-  if (!user.value) return navigateTo({ path: '/login', query: { next: route.fullPath } });
+function addToBag() {
+  if (!product.value) return;
   if (!size.value) {
-    notice.value = 'Choose your size first.';
+    notice.value = { text: 'Choose your size first.' };
     return;
   }
-  notice.value = 'Ordering opens in the next update. Your size is saved on this page for now.';
+  bag.add({
+    productId: product.value.id,
+    name: product.value.name,
+    price: product.value.price,
+    size: size.value,
+    color: color.value,
+    imageUrl: product.value.images[0]?.url ?? null,
+    storeName: product.value.company.name,
+    storeSlug: product.value.company.slug,
+    storeLogoUrl: product.value.company.logoUrl,
+  });
+  notice.value = { text: 'Added to your bag.', ok: true };
 }
 </script>
 
 <template>
-  <section v-if="error" class="card">
-    <h1>This item isn't available</h1>
-    <p><NuxtLink to="/">Back to all stores</NuxtLink></p>
+  <section v-if="error" class="card empty">
+    <h3>This item isn't available</h3>
+    <NuxtLink to="/" class="btn">Back to the shop</NuxtLink>
   </section>
 
   <section v-else-if="product">
-    <NuxtLink :to="`/stores/${product.company.slug}`" class="back">← {{ product.company.name }}</NuxtLink>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <NuxtLink to="/">Home</NuxtLink> /
+      <NuxtLink :to="`/stores/${product.company.slug}`">{{ product.company.name }}</NuxtLink> / {{ product.name }}
+    </nav>
+
     <div class="product-page">
       <div class="gallery">
-        <div class="product-photo large">
-          <img v-if="product.images[photo]" :src="media(product.images[photo]!.url)" :alt="product.name" />
-          <span v-else class="muted">No photo</span>
-        </div>
         <div v-if="product.images.length > 1" class="thumbs">
           <button
             v-for="(image, index) in product.images"
@@ -59,28 +69,38 @@ function order() {
             <img :src="media(image.url)" alt="" />
           </button>
         </div>
+        <div class="main-photo">
+          <img v-if="product.images[photo]" :src="media(product.images[photo]!.url)" :alt="product.name" />
+          <span v-else class="muted">No photo</span>
+        </div>
       </div>
 
       <div class="product-details">
-        <span class="muted small">{{ categoryLabels[product.category] }}</span>
-        <h1>{{ product.name }}</h1>
-        <p class="price large">{{ formatPrice(product.price) }}</p>
-        <p v-if="product.description">{{ product.description }}</p>
+        <div class="product-title">
+          <NuxtLink :to="`/stores/${product.company.slug}`">{{ product.company.name }}</NuxtLink>
+          <h1>{{ product.name }}</h1>
+          <span class="product-price">{{ formatPrice(product.price) }}</span>
+        </div>
 
         <div v-if="product.colors.length" class="option-group">
-          <span class="option-label">Colour</span>
+          <span class="option-label">Colour · {{ color }}</span>
           <div class="chips">
-            <button v-for="c in product.colors" :key="c" :class="{ active: color === c }" @click="color = c">{{ c }}</button>
+            <button v-for="c in product.colors" :key="c" class="chip" :class="{ active: color === c }" :aria-pressed="color === c" @click="color = c">{{ c }}</button>
           </div>
         </div>
 
         <div class="option-group">
-          <span class="option-label">Size</span>
-          <div class="chips">
+          <span class="option-label">
+            <span>Size</span>
+            <button v-if="hasSizeChart" type="button" class="link-button" @click="showChart = !showChart">Size guide</button>
+          </span>
+          <div class="size-grid">
             <button
               v-for="s in product.sizes"
               :key="s.label"
+              class="chip"
               :class="{ active: size === s.label }"
+              :aria-pressed="size === s.label"
               :disabled="s.stock === 0"
               :title="s.stock === 0 ? 'Sold out' : undefined"
               @click="size = s.label"
@@ -88,20 +108,8 @@ function order() {
               {{ s.label }}
             </button>
           </div>
-        </div>
-
-        <div class="actions stacked">
-          <button class="btn btn-ghost" @click="tryOn">Try it on</button>
-          <button class="btn" @click="order">{{ user ? 'Order' : 'Log in to order' }}</button>
-        </div>
-        <p v-if="notice" class="notice">{{ notice }}</p>
-
-        <details v-if="hasSizeChart" class="size-chart">
-          <summary>Size chart</summary>
-          <table>
-            <thead>
-              <tr><th>Size</th><th>Chest</th><th>Waist</th><th>Hips</th></tr>
-            </thead>
+          <table v-if="showChart" class="size-chart">
+            <thead><tr><th>Size</th><th>Chest</th><th>Waist</th><th>Hips</th></tr></thead>
             <tbody>
               <tr v-for="s in product.sizes" :key="s.label">
                 <td>{{ s.label }}</td>
@@ -111,7 +119,24 @@ function order() {
               </tr>
             </tbody>
           </table>
-        </details>
+        </div>
+
+        <div class="cta-row">
+          <button class="btn btn-ghost btn-large" @click="tryOn"><AppIcon name="camera" :size="20" />Try on with webcam</button>
+          <button class="btn btn-large" @click="addToBag">Add to bag</button>
+        </div>
+        <p v-if="notice" class="notice" :class="notice.ok ? 'notice-ok' : ''" role="status">
+          {{ notice.text }}
+          <NuxtLink v-if="notice.ok" to="/bag">View bag</NuxtLink>
+        </p>
+
+        <div class="info-box">
+          <div><AppIcon name="truck" :size="22" /><span>Delivered by Iwear together with items from other stores</span></div>
+          <div>
+            <strong>About this item</strong>
+            {{ product.description || `${categoryLabels[product.category]} from ${product.company.name}.` }}
+          </div>
+        </div>
       </div>
     </div>
   </section>

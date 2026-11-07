@@ -4,7 +4,6 @@ import type { Company } from '~/types';
 definePageMeta({ middleware: 'auth', roles: ['COMPANY'] });
 
 const api = useApi();
-const media = useMediaUrl();
 const { fetchMe } = useAuth();
 const { data: company, error: loadError } = await useAsyncData('my-company', () => api<Company>('/company'));
 
@@ -66,8 +65,7 @@ async function uploadLogo(event: Event) {
       <CompanyStatusNotice />
 
       <div class="card logo-row">
-        <img v-if="company.logoUrl" :src="media(company.logoUrl)" alt="Store logo" class="logo logo-large" />
-        <div v-else class="logo logo-large logo-letter">{{ company.name.charAt(0) }}</div>
+        <StoreAvatar :name="company.name" :logo-url="company.logoUrl" size="lg" />
         <div>
           <strong>Store logo</strong>
           <p class="muted small">Shown on the store list. A square image works best.</p>

@@ -131,6 +131,24 @@ describe('Stores and products (e2e)', () => {
     expect(found.body.map((s: { name: string }) => s.name)).toEqual(['Atlas Style']);
   });
 
+  it('lists items across stores and searches by item or store name', async () => {
+    const silk = await companyOwner('owner@silk.test', 'Silk Road');
+    const atlas = await companyOwner('other@test.uz', 'Atlas Style');
+    const pending = await companyOwner('pending@test.uz', 'Hidden Shop', false);
+    await http().post('/api/company/products').set(bearer(silk.token)).send(dress).expect(201);
+    await http().post('/api/company/products').set(bearer(atlas.token)).send({ ...dress, name: 'Linen shirt', category: 'TOP' }).expect(201);
+    await http().post('/api/company/products').set(bearer(pending.token)).send({ ...dress, name: 'Secret dress' }).expect(201);
+
+    const all = await http().get('/api/products').expect(200);
+    expect(all.body.map((p: { name: string }) => p.name).sort()).toEqual(['Ikat silk dress', 'Linen shirt']);
+    expect(all.body[0].company).toHaveProperty('slug');
+
+    const byStore = await http().get('/api/products?search=atlas').expect(200);
+    expect(byStore.body.map((p: { name: string }) => p.name)).toEqual(['Linen shirt']);
+    const byType = await http().get('/api/products?category=DRESS').expect(200);
+    expect(byType.body.map((p: { name: string }) => p.name)).toEqual(['Ikat silk dress']);
+  });
+
   it('only lets a company change its own products', async () => {
     const a = await companyOwner('a@test.uz', 'Shop A');
     const b = await companyOwner('b@test.uz', 'Shop B');

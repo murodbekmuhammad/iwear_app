@@ -1,0 +1,66 @@
+// Iwear data model. Phase 1: accounts, roles and companies.
+// Later phases add products, try-on sessions, orders and deliveries.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  COMPANY
+  CUSTOMER
+  COURIER
+}
+
+enum CompanyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role     @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // A COMPANY user owns exactly one company.
+  company           Company?  @relation("CompanyOwner")
+  reviewedCompanies Company[] @relation("CompanyReviewer")
+
+  @@index([role])
+}
+
+model Company {
+  id              String        @id @default(uuid())
+  name            String
+  slug            String        @unique
+  description     String?
+  phone           String?
+  website         String?
+  address         String?
+  status          CompanyStatus @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  ownerId String @unique
+  owner   User   @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("CompanyReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}

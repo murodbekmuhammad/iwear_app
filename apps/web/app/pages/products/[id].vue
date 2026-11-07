@@ -20,7 +20,7 @@ const notice = ref<{ text: string; ok?: boolean } | null>(null);
 const hasSizeChart = computed(() => product.value?.sizes.some((s) => s.chestCm || s.waistCm || s.hipsCm));
 
 function tryOn() {
-  notice.value = { text: 'Camera try-on is coming soon. You can already add this item to your bag.' };
+  if (product.value) navigateTo({ path: '/try-on', query: { product: product.value.id } });
 }
 
 function addToBag() {

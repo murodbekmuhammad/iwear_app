@@ -22,6 +22,8 @@ export default defineNuxtConfig({
     '/company/**': { ssr: false },
     '/courier/**': { ssr: false },
     '/account/**': { ssr: false },
+    // The camera only exists in the browser.
+    '/try-on': { ssr: false },
   },
   app: {
     head: {

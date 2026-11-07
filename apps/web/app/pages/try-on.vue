@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { ProductCard, PublicProduct } from '~/types';
+import type { Category, ProductCard, PublicProduct } from '~/types';
+import { fitGarment, measureGarment, type BodyPoints, type GarmentShape } from '~/utils/garmentFit';
 
 /**
  * Camera try-on: shows the shopper's webcam and lays the clothing photo (a transparent PNG)
- * over it. The shopper drags it onto their body and resizes it. Automatic body fitting
- * and the AI size suggestion come later.
+ * over it. Body tracking (MediaPipe, in the browser) finds the shoulders and hips and keeps the
+ * clothes on the body as the shopper moves. They can also drag and resize the clothes by hand.
  */
 definePageMeta({ layout: false });
 useHead({ title: 'Try on · Iwear' });
@@ -13,6 +14,7 @@ interface TryItem {
   id: string;
   name: string;
   price: number;
+  category: Category;
   imageUrl: string | null;
   storeName: string;
   storeSlug: string;
@@ -40,6 +42,7 @@ const { data: items, error } = await useAsyncData(`try-on-${productId.value}`, a
       id: chosen.id,
       name: chosen.name,
       price: chosen.price,
+      category: chosen.category,
       imageUrl: chosen.images[0]?.url ?? null,
       storeName: chosen.company.name,
       storeSlug: chosen.company.slug,
@@ -54,6 +57,7 @@ const { data: items, error } = await useAsyncData(`try-on-${productId.value}`, a
       id: p.id,
       name: p.name,
       price: p.price,
+      category: p.category,
       imageUrl: p.images[0].url,
       storeName: p.company?.name ?? '',
       storeSlug: p.company?.slug ?? '',
@@ -98,6 +102,7 @@ async function startCamera() {
       await video.value.play().catch(() => undefined);
     }
     cameraState.value = 'on';
+    tracking.start();
   } catch (err) {
     const name = (err as DOMException)?.name;
     cameraState.value = name === 'NotFoundError' || name === 'OverconstrainedError' ? 'missing' : 'denied';
@@ -112,21 +117,79 @@ function stopCamera() {
 onMounted(startCamera);
 onBeforeUnmount(stopCamera);
 
-// ---- Placing the clothes: position is the centre in % of the stage, size is % of its height ----
-const DEFAULT_PLACE = { x: 50, y: 58, size: 72 };
+// ---- Placing the clothes: centre in % of the stage, size in % of its height, angle in degrees ----
+const DEFAULT_PLACE = { x: 50, y: 58, size: 72, angle: 0 };
 const place = reactive({ ...DEFAULT_PLACE });
 const stage = ref<HTMLElement | null>(null);
 const pointers = new Map<number, { x: number; y: number }>();
 let pinchStart: { distance: number; size: number } | null = null;
 
+// Auto-fit: follow the body. Moving the clothes by hand turns it off until "Follow me".
+const autoFit = ref(true);
+const garmentShape = ref<GarmentShape | null>(null);
+
+function onBody(body: BodyPoints | null) {
+  const box = stage.value?.getBoundingClientRect();
+  if (!body || !autoFit.value || !active.value || !garmentShape.value || !box) return;
+  const fit = fitGarment(active.value.category, body, garmentShape.value);
+  if (!fit) return;
+  // Smooth the movement so the clothes don't shake.
+  const ease = 0.45;
+  place.x += ((fit.x / box.width) * 100 - place.x) * ease;
+  place.y += ((fit.y / box.height) * 100 - place.y) * ease;
+  place.size += (clampSize((fit.height / box.height) * 100) - place.size) * ease;
+  place.angle += (fit.angle - place.angle) * ease;
+}
+
+const tracking = useBodyTracking(video, stage, onBody);
+
+const trackingLabel = computed(() => {
+  if (!autoFit.value) return 'Placed by hand';
+  switch (tracking.state.value) {
+    case 'loading':
+      return 'Loading body tracking…';
+    case 'searching':
+      return 'Looking for you…';
+    case 'tracking':
+      return 'Following you';
+    case 'failed':
+      return "Auto-fit isn't available here. Drag the clothes onto you";
+    default:
+      return '';
+  }
+});
+
+const hint = computed(() =>
+  autoFit.value && tracking.state.value !== 'failed'
+    ? 'Step back so your shoulders and hips are in the frame'
+    : 'Drag the clothes onto you, and resize them with the slider',
+);
+
+function onGarmentLoad(event: Event) {
+  garmentShape.value = measureGarment(event.target as HTMLImageElement);
+}
+
+function manual() {
+  autoFit.value = false;
+}
+
+function followMe() {
+  autoFit.value = true;
+}
+
 function resetPlace() {
   Object.assign(place, DEFAULT_PLACE);
+  autoFit.value = true;
 }
-watch(activeIndex, resetPlace);
+watch(activeIndex, () => {
+  garmentShape.value = null;
+  place.angle = 0;
+});
 
 const clampSize = (value: number) => Math.min(140, Math.max(20, value));
 
 function onPointerDown(event: PointerEvent) {
+  manual();
   (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size === 2) {
@@ -155,6 +218,7 @@ function onPointerUp(event: PointerEvent) {
 }
 
 function onWheel(event: WheelEvent) {
+  manual();
   place.size = clampSize(place.size - event.deltaY * 0.05);
 }
 
@@ -172,6 +236,7 @@ function onKey(event: KeyboardEvent) {
   const move = moves[event.key];
   if (move) {
     event.preventDefault();
+    manual();
     move();
   }
 }
@@ -180,6 +245,7 @@ const garmentStyle = computed(() => ({
   left: `${place.x}%`,
   top: `${place.y}%`,
   height: `${place.size}%`,
+  transform: `translate(-50%, -50%) rotate(${place.angle}deg)`,
 }));
 
 // ---- Photo ----
@@ -209,7 +275,11 @@ async function takePhoto() {
   if (img?.complete && img.naturalHeight) {
     const gh = (place.size / 100) * canvas.height;
     const gw = gh * (img.naturalWidth / img.naturalHeight);
-    ctx.drawImage(img, (place.x / 100) * canvas.width - gw / 2, (place.y / 100) * canvas.height - gh / 2, gw, gh);
+    ctx.save();
+    ctx.translate((place.x / 100) * canvas.width, (place.y / 100) * canvas.height);
+    ctx.rotate((place.angle * Math.PI) / 180);
+    ctx.drawImage(img, -gw / 2, -gh / 2, gw, gh);
+    ctx.restore();
   }
 
   try {
@@ -313,9 +383,13 @@ function exit() {
           @pointercancel="onPointerUp"
           @wheel.prevent="onWheel"
           @keydown="onKey"
+          @load="onGarmentLoad"
         />
 
-        <div class="tryon-hint">Step back so your body is in the frame, then drag the clothes onto you</div>
+        <div class="tryon-hint">{{ hint }}</div>
+        <div v-if="cameraState === 'on' && trackingLabel" class="tryon-status" role="status">
+          <span class="tryon-status-dot" :class="{ on: autoFit && tracking.state.value === 'tracking' }" />{{ trackingLabel }}
+        </div>
       </section>
 
         <div v-if="active" class="tryon-bar">
@@ -325,9 +399,10 @@ function exit() {
           </span>
           <label class="tryon-size">
             <span>Resize</span>
-            <input v-model.number="place.size" type="range" min="20" max="140" step="1" aria-label="Make the clothes bigger or smaller" />
+            <input v-model.number="place.size" type="range" min="20" max="140" step="1" aria-label="Make the clothes bigger or smaller" @input="manual" />
           </label>
           <span class="tryon-bar-actions">
+            <button v-if="!autoFit && tracking.state.value !== 'failed'" type="button" class="btn-outline-light" @click="followMe">Follow me</button>
             <button type="button" class="btn-outline-light" @click="resetPlace">Reset</button>
             <button type="button" class="btn-outline-light" :disabled="cameraState !== 'on'" @click="takePhoto">Take photo</button>
             <NuxtLink :to="`/products/${active.id}`" class="btn btn-light">Details</NuxtLink>
@@ -400,9 +475,12 @@ function exit() {
 .tryon-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .tryon-camera-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; text-align: center; color: #d8d2cc; }
 .tryon-camera-msg p { max-width: 380px; margin: 0; font-size: 15px; line-height: 1.5; }
-.tryon-garment { position: absolute; transform: translate(-50%, -50%); width: auto; cursor: grab; user-select: none; touch-action: none; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25)); }
+.tryon-garment { position: absolute; width: auto; cursor: grab; user-select: none; touch-action: none; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25)); }
 .tryon-garment:active { cursor: grabbing; }
 .tryon-garment:focus-visible { outline: 2px dashed #fff; outline-offset: 4px; }
+.tryon-status { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 14px; background: rgba(0, 0, 0, 0.6); font-size: 12px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+.tryon-status-dot { width: 8px; height: 8px; border-radius: 4px; background: #b8b2ac; }
+.tryon-status-dot.on { background: #6ee7a8; }
 .tryon-hint { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 40px); padding: 8px 16px; border-radius: 18px; background: rgba(0, 0, 0, 0.6); font-size: 13px; text-align: center; pointer-events: none; }
 .tryon-bar { position: absolute; bottom: 20px; left: 20px; right: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px; background: rgba(0, 0, 0, 0.65); }
 .tryon-bar-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -450,6 +528,9 @@ function exit() {
   .tryon-bar { position: static; margin-top: 12px; background: #1f1d1b; }
   .tryon-size { flex: 1; }
   .tryon-size input { flex: 1; width: auto; }
-  .tryon-hint { top: 12px; font-size: 12px; padding: 6px 12px; }
+  .tryon-status { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 14px; background: rgba(0, 0, 0, 0.6); font-size: 12px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+.tryon-status-dot { width: 8px; height: 8px; border-radius: 4px; background: #b8b2ac; }
+.tryon-status-dot.on { background: #6ee7a8; }
+.tryon-hint { top: 12px; font-size: 12px; padding: 6px 12px; }
 }
 </style>

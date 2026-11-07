@@ -8,10 +8,11 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "node scripts/copy-mediapipe.mjs && nuxt prepare",
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.1.1",
     "nuxt": "^4.2.0",
     "vue": "^3.5.0",
     "vue-router": "^5.4.0"

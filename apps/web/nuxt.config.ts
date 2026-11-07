@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
 // STATIC_SITE=1 builds a browser-only site for static hosts such as GitHub Pages
@@ -9,6 +11,10 @@ export default defineNuxtConfig({
   ssr: !staticSite,
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
+  // Body-tracking runtime for the camera try-on, copied from node_modules by scripts/copy-mediapipe.mjs.
+  nitro: {
+    publicAssets: [{ dir: fileURLToPath(new URL('./.mediapipe', import.meta.url)), baseURL: '/mediapipe', maxAge: 60 * 60 * 24 * 30 }],
+  },
   runtimeConfig: {
     public: {
       // Override with NUXT_PUBLIC_API_BASE in .env.

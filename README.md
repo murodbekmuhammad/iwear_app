@@ -88,6 +88,19 @@ Things to know about the free plan:
   upload photos, add a Render disk mounted at `apps/api/uploads` (paid) or switch `UploadsService` to
   S3-style storage.
 
+### Website on GitHub Pages (optional)
+
+GitHub Pages can host the website only, not the API or the database, so the API still runs on Render.
+`.github/workflows/pages.yml` builds the website as static files on every push to `main` and publishes it.
+
+1. In the repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+2. In **Settings → Secrets and variables → Actions → Variables**, add `API_BASE` =
+   `https://<iwear-api address>/api`, then re-run the **Website on GitHub Pages** workflow.
+3. On Render, add `https://<your-user>.github.io` to `CORS_ORIGINS` on **iwear-api**
+   (comma-separated if there are several).
+
+The site is then at `https://<your-user>.github.io/iwear_app/`.
+
 ## Tests
 
 ```bash

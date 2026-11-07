@@ -1,12 +1,18 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+
+// STATIC_SITE=1 builds a browser-only site for static hosts such as GitHub Pages
+// (see .github/workflows/pages.yml). Normal builds keep server rendering.
+const staticSite = process.env.STATIC_SITE === '1';
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
+  ssr: !staticSite,
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
       // Override with NUXT_PUBLIC_API_BASE in .env.
-      apiBase: 'http://localhost:3001/api',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3001/api',
     },
   },
   // Dashboards are private and per-user, so render them in the browser only.

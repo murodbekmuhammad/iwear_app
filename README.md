@@ -66,6 +66,20 @@ npm run dev:web     # http://localhost:3000
 
 Log in at http://localhost:3000/login with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `apps/api/.env`.
 
+### Demo data
+
+Run `SEED_DEMO=true npm run db:seed` to add three demo stores with 13 clothes and photos (Render does
+this on every deploy). Running it again adds nothing new. The clothing photos are transparent PNGs,
+so the try-on can lay them over the camera picture. The demo accounts all use the password
+`DEMO_PASSWORD` (`secret123` if unset):
+
+| Account | Role |
+| --- | --- |
+| `dilnoza@silkroad.uz` | Company: Silk Road Fashion |
+| `jasur@atlasstyle.uz` | Company: Atlas Style |
+| `madina@bukharabloom.uz` | Company: Bukhara Bloom |
+| `aziza@example.com` | Customer |
+
 ## Deploy to Render
 
 `render.yaml` sets up three things on [Render](https://render.com), all in Frankfurt: the PostgreSQL

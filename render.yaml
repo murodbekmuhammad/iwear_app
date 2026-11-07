@@ -34,6 +34,9 @@ services:
         sync: false
       - key: ADMIN_NAME
         value: Iwear Admin
+      # Adds demo stores and clothes on every deploy (skips ones already there). Set to false to stop.
+      - key: SEED_DEMO
+        value: "true"
       # The website's address, e.g. https://iwear-web.onrender.com (set after the first deploy).
       - key: CORS_ORIGINS
         sync: false

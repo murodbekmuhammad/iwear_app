@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
@@ -8,7 +8,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { configureApp } from '../src/setup';
 
 describe('Iwear API (e2e)', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   let prisma: PrismaService;
   let adminToken: string;
 
@@ -16,7 +16,7 @@ describe('Iwear API (e2e)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
     prisma = app.get(PrismaService);

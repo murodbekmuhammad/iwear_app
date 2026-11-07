@@ -3,8 +3,8 @@ import type { AuthResponse, Role, User } from '~/types';
 /** Where each role lands after signing in. */
 export const homeForRole: Record<Role, string> = {
   ADMIN: '/admin',
-  COMPANY: '/company',
-  CUSTOMER: '/account',
+  COMPANY: '/company/products',
+  CUSTOMER: '/',
   COURIER: '/courier',
 };
 
@@ -38,8 +38,8 @@ export function useAuth() {
     fetchMe,
     login: async (email: string, password: string, next?: string) =>
       signIn(await api<AuthResponse>('/auth/login', { method: 'POST', body: { email, password } }), next),
-    register: async (body: Record<string, unknown>) =>
-      signIn(await api<AuthResponse>('/auth/register', { method: 'POST', body })),
+    register: async (body: Record<string, unknown>, next?: string) =>
+      signIn(await api<AuthResponse>('/auth/register', { method: 'POST', body }), next),
     registerCompany: async (body: Record<string, unknown>) =>
       signIn(await api<AuthResponse>('/auth/register/company', { method: 'POST', body })),
     logout() {

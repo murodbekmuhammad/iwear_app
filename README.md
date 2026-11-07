@@ -22,10 +22,23 @@ and couriers deliver orders to the spot the customer picks on a map.
 ## Roadmap
 
 1. **Foundation** (done): accounts, the four roles, login with JWT, company sign-up and admin approval, courier accounts
-2. **Catalog:** companies manage products, sizes, colours, photos and size charts; customers browse and search
+2. **Stores and clothes** (done): visitors browse stores and clothes without logging in; companies manage their clothes with photos, sizes, stock and an optional size chart
 3. **Orders:** cart, checkout, payments, order statuses
 4. **Delivery:** address picker on a map, courier assignment, delivery tracking
 5. **AI:** camera try-on, size estimation, recommendations
+
+## How it works
+
+The UI follows the Iwear product design (warm off-white, plum accent, DM Serif Display + Inter).
+
+1. A visitor opens the site: a try-on hero, "Shop by store" and a "Ready to try on" grid. No login needed.
+2. They search dresses or stores from the header, or open a store and filter by type, size and price.
+3. On the item page they pick a colour and size and **Add to bag**. The bag can hold items from many
+   stores and is kept in the browser.
+4. **Checkout** asks the visitor to sign in (or create an account); the bag is kept. Choosing the delivery
+   spot on the map and paying come in phase 3. Camera try-on comes later.
+5. Companies log in and manage their clothes under **My clothes**. Their store appears to shoppers
+   once an admin approves it.
 
 ## Getting started
 
@@ -81,7 +94,20 @@ Full, interactive docs are at `/api/docs`.
 | GET | `/admin/users?role=COURIER` | Admin |
 | PATCH | `/admin/users/:id/active` | Admin: activate or deactivate an account |
 | POST | `/admin/couriers` | Admin: create a courier account |
+| GET | `/stores?search=` | Public: approved stores |
+| GET | `/stores/:slug?category=DRESS` | Public: a store and its visible clothes |
+| GET | `/products?search=&category=&limit=` | Public: newest items across all stores (search matches item or store name) |
+| GET | `/products/:id` | Public: one item with photos, sizes and size chart |
+| GET, POST | `/company/products` | Company: list or add clothes |
+| GET, PATCH, DELETE | `/company/products/:id` | Company: view, edit or delete an item |
+| POST | `/company/products/:id/images` | Company: upload photos (multipart field `images`) |
+| DELETE | `/company/products/:id/images/:imageId` | Company: remove a photo |
+| POST | `/company/logo` | Company: upload the store logo (multipart field `logo`) |
 | GET | `/health` | Public |
+
+Uploaded photos are saved in `apps/api/uploads` (set `UPLOAD_DIR` to change it) and served at
+`/uploads/<file>`. Only real JPG, PNG and WebP files up to 5 MB are accepted. For production, swap
+`UploadsService` for cloud storage such as S3.
 
 ### Company status
 

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CompanyStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { ListCompaniesQuery } from './dto/review-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { slugify } from './slug';
@@ -19,7 +20,10 @@ const ALLOWED_TRANSITIONS: Record<CompanyStatus, CompanyStatus[]> = {
 
 @Injectable()
 export class CompaniesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploads: UploadsService,
+  ) {}
 
   /** Returns a slug for the name that no other company uses. */
   async uniqueSlug(name: string, db: Prisma.TransactionClient = this.prisma, excludeId?: string) {
@@ -55,6 +59,18 @@ export class CompaniesService {
       data.rejectionReason = null;
     }
     return this.prisma.company.update({ where: { id: company.id }, data, include: companyInclude });
+  }
+
+  async setLogo(ownerId: string, file: { buffer: Buffer; size: number } | undefined) {
+    const company = await this.findMine(ownerId);
+    const logoUrl = await this.uploads.saveImage(file);
+    const updated = await this.prisma.company.update({
+      where: { id: company.id },
+      data: { logoUrl },
+      include: companyInclude,
+    });
+    await this.uploads.remove(company.logoUrl);
+    return updated;
   }
 
   async list(query: ListCompaniesQuery) {

@@ -31,12 +31,15 @@ async function submit() {
 </script>
 
 <template>
-  <form class="card form narrow" @submit.prevent="submit">
-    <h1>Sell on Iwear</h1>
-    <p class="muted">Tell us about your company. An admin reviews every new company before it can sell.</p>
+  <div class="auth-layout">
+  <form class="auth-card" @submit.prevent="submit">
+    <div class="form" style="gap: 8px">
+      <h1>Sell on Iwear</h1>
+      <p>Open your store on Iwear. Shoppers can try your clothes on with their camera, and our couriers deliver them. We review every new store before it goes live.</p>
+    </div>
 
-    <h3>Company</h3>
-    <label>Company name <input v-model="form.companyName" required minlength="2" /></label>
+    <h3>Your store</h3>
+    <label>Store name <input v-model="form.companyName" required minlength="2" /></label>
     <label>About (optional) <textarea v-model="form.description" rows="3" /></label>
     <label>Website (optional) <input v-model="form.website" type="url" placeholder="https://" /></label>
     <label>Address (optional) <input v-model="form.address" /></label>
@@ -51,6 +54,7 @@ async function submit() {
     </label>
 
     <FormError :message="error" />
-    <button class="btn" :disabled="loading">{{ loading ? 'Sending…' : 'Send for review' }}</button>
+    <button class="btn btn-large btn-block" :disabled="loading">{{ loading ? 'Sending…' : 'Send for review' }}</button>
   </form>
+  </div>
 </template>

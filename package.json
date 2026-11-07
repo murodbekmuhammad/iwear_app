@@ -1,0 +1,20 @@
+{
+  "name": "iwear",
+  "private": true,
+  "description": "Iwear: virtual try-on marketplace for clothing companies, customers and couriers",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev -w @iwear/api",
+    "dev:web": "npm run dev -w @iwear/web",
+    "build": "npm run build -w @iwear/api && npm run build -w @iwear/web",
+    "test": "npm run test -w @iwear/api && npm run test:e2e -w @iwear/api",
+    "lint": "npm run typecheck -w @iwear/api && npm run typecheck -w @iwear/web",
+    "db:migrate": "npm run prisma:migrate -w @iwear/api",
+    "db:seed": "npm run prisma:seed -w @iwear/api"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
